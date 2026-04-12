@@ -319,28 +319,12 @@ if solve_button and user_input:
 # Finale Lösung anzeigen (GROSS und deutlich)
 if st.session_state.problem_result:
     st.divider()
-    st.markdown("---")
     st.markdown("## 🎉 FINALE LÖSUNG")
-    st.markdown("---")
+    st.divider()
 
-    # Große, gut lesbare Ausgabe mit korrekter Formatierung
-    st.markdown(f"""
-    <div style="
-        background-color: #f0f8ff;
-        padding: 25px;
-        border-radius: 8px;
-        border-left: 4px solid #0066cc;
-        font-size: 15px;
-        line-height: 1.7;
-        white-space: pre-line;
-        word-break: break-word;
-        color: #333333;
-        font-family: 'Courier New', monospace;
-        overflow-x: auto;
-    ">
-{st.session_state.problem_result.replace('<', '&lt;').replace('>', '&gt;')}
-    </div>
-    """, unsafe_allow_html=True)
+    # Container mit besserer Formatierung
+    with st.container(border=True):
+        st.write(st.session_state.problem_result)
 
     st.write("")  # Spacing
 
