@@ -111,55 +111,64 @@ def extract_short_summary(text, max_chars=150):
 
 def plan_phase(user_prompt, user_temperature):
     """Phase 1: Erstellt einen Plan."""
-    system_prompt = """Du bist ein intelligenter Agent, der Probleme systematisch löst.
-Erstelle einen detaillierten Plan zur Lösung des Problems.
+    system_prompt = """Du bist ein Plan-ersteller. DEINE EINZIGE AUFGABE ist es, einen detaillierten Plan zur Lösung des Problems zu erstellen.
+
+WICHTIG: Erstelle NUR einen Plan, keine Lösung!
+- Analysiere das Problem
+- Erstelle Lösungsschritte
+- Definiere Erfolgskriterien
 
 Format:
 1. PROBLEM-ANALYSE: Kurze Zusammenfassung
-2. LÖSUNGSSCHRITTE: Nummerierte Liste
-3. ERFOLGS-KRITERIUM: Woran erkenne ich, dass es gelöst ist?
+2. LÖSUNGSSCHRITTE: Nummerierte Liste der Schritte
+3. ERFOLGS-KRITERIUM: Woran erkenne ich, dass das Problem gelöst ist?
 
-Sei präzise und strukturiert."""
+Stoppe nach dem Plan. Fange NICHT mit der Lösung an!"""
 
     messages = [{"role": "user", "content": f"Erstelle einen Plan für: {user_prompt}"}]
     return query_agent(messages, system_prompt, user_temperature=user_temperature)
 
 def execution_phase(user_prompt, plan, user_temperature):
     """Phase 2: Arbeitet den Plan ab."""
-    system_prompt = """Du bist ein intelligenter Agent, der Probleme systematisch löst.
-Arbeite den Plan Schritt für Schritt ab. Denke laut während du vorgehst.
-Erstelle am Ende eine ZUSAMMENFASSUNG der Lösung."""
+    system_prompt = """Du bist ein Problemlöser. DEINE EINZIGE AUFGABE ist es, den gegebenen Plan Schritt für Schritt UMZUSETZEN.
+
+WICHTIG:
+- Folge NUR dem Plan
+- Implementiere die Lösungsschritte
+- Gib am Ende eine klare ZUSAMMENFASSUNG der Lösung
+
+Erstelle KEINE neuen Pläne, KEINE Überprüfungen - nur die Umsetzung!"""
 
     messages = [
-        {"role": "user", "content": f"""Original-Problem: {user_prompt}
+        {"role": "user", "content": f"""Problem: {user_prompt}
 
 Plan:\n{plan}
 
-Arbeite systematisch an der Lösung."""}
+Setze diesen Plan Punkt für Punkt um und erstelle die Lösung."""}
     ]
 
     return query_agent(messages, system_prompt, max_tokens=3000, user_temperature=user_temperature)
 
 def verification_phase(user_prompt, plan, solution, user_temperature):
     """Phase 3: Überprüft die Lösung."""
-    system_prompt = """Du bist ein kritischer Reviewer. Überprüfe die Lösung:
+    system_prompt = """Du bist ein kritischer Reviewer. DEINE EINZIGE AUFGABE ist es, die gegebene Lösung zu überprüfen.
 
-1. ERFÜLLUNG: Wurde das Problem vollständig gelöst?
-2. QUALITÄT: Ist die Lösung von guter Qualität?
-3. VERBESSERUNGEN: Gibt es noch Verbesserungspotenzial?
-4. BEWERTUNG: Note von 1-10
-5. FAZIT: Schreibe genau: "FAZIT: ja, ist akzeptabel" oder "FAZIT: nein, nicht akzeptabel"
+WICHTIG:
+- Überprüfe die Lösung NUR gegen den Plan
+- Gebe ehrliches Feedback
+- Gebe eine Note von 1-10
+- Schreibe am Ende genau: "FAZIT: ja, ist akzeptabel" oder "FAZIT: nein, nicht akzeptabel"
 
-Sei ehrlich in deiner Bewertung."""
+NICHT: Erstelle keine neuen Lösungen, keine neuen Pläne!"""
 
     messages = [
-        {"role": "user", "content": f"""Original-Problem: {user_prompt}
+        {"role": "user", "content": f"""Problem: {user_prompt}
 
 Plan: {plan}
 
 Lösung: {solution}
 
-Überprüfe diese Lösung kritisch."""}
+Überprüfe diese Lösung kritisch. Passt sie zum Plan? Ist sie vollständig?"""}
     ]
 
     verification = query_agent(messages, system_prompt, temperature=0.3, user_temperature=user_temperature)
@@ -169,18 +178,24 @@ Lösung: {solution}
 
 def refinement_phase(user_prompt, plan, solution, feedback, iteration, user_temperature):
     """Phase 4: Verbessert die Lösung."""
-    system_prompt = """Du bist ein intelligenter Agent, der Feedback annimmt und Lösungen verbessert.
-Erstelle eine verbesserte Lösung basierend auf dem Feedback.
-Erkläre am Ende, welche Verbesserungen du vorgenommen hast."""
+    system_prompt = """Du bist ein Verbesserer. DEINE EINZIGE AUFGABE ist es, die Lösung basierend auf Feedback zu optimieren.
+
+WICHTIG:
+- Verbessere NUR die vorhandene Lösung
+- Nutze das gegebene Feedback
+- Erkläre welche Verbesserungen du gemacht hast
+- Gib die komplette verbesserte Lösung aus
+
+NICHT: Erstelle keinen neuen Plan, keine neue Strategie!"""
 
     messages = [
-        {"role": "user", "content": f"""Original-Problem: {user_prompt}
+        {"role": "user", "content": f"""Problem: {user_prompt}
 
 Bisherige Lösung: {solution}
 
-Feedback: {feedback}
+Feedback zur Verbesserung: {feedback}
 
-Erstelle eine verbesserte Lösung."""}
+Verbessere die Lösung basierend auf diesem Feedback."""}
     ]
 
     return query_agent(messages, system_prompt, max_tokens=3000, user_temperature=user_temperature)
@@ -302,21 +317,22 @@ if st.session_state.problem_result:
     st.markdown("## 🎉 FINALE LÖSUNG")
     st.markdown("---")
 
-    # Große, gut lesbare Ausgabe
+    # Große, gut lesbare Ausgabe mit korrekter Formatierung
     st.markdown(f"""
     <div style="
         background-color: #f0f8ff;
-        padding: 30px;
-        border-radius: 10px;
-        border-left: 5px solid #0066cc;
-        font-size: 16px;
-        line-height: 1.8;
-        white-space: pre-wrap;
-        word-wrap: break-word;
-        color: #1a1a1a;
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        padding: 25px;
+        border-radius: 8px;
+        border-left: 4px solid #0066cc;
+        font-size: 15px;
+        line-height: 1.7;
+        white-space: pre-line;
+        word-break: break-word;
+        color: #333333;
+        font-family: 'Courier New', monospace;
+        overflow-x: auto;
     ">
-{st.session_state.problem_result}
+{st.session_state.problem_result.replace('<', '&lt;').replace('>', '&gt;')}
     </div>
     """, unsafe_allow_html=True)
 
