@@ -189,9 +189,9 @@ Erstelle eine verbesserte Lösung."""}
 if not check_password():
     st.stop()
 
-st.set_page_config(page_title="🤖 AI Agent", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="AI Agent", layout="wide", initial_sidebar_state="expanded")
 
-st.title("🤖 AI Agent - Intelligent Problem Solver")
+st.title("AI Agent - Intelligent Problem Solver")
 st.markdown("*Powered by NVIDIA NIM & Llama 3.1 70B*")
 
 # Sidebar Konfiguration
@@ -224,19 +224,21 @@ if "chat_history" not in st.session_state:
 if "problem_result" not in st.session_state:
     st.session_state.problem_result = None
 
-# Eingabe für Problem
-col1, col2 = st.columns([4, 1])
-with col1:
+# Eingabe für Problem mit Formular (unterstützt Ctrl+Enter)
+with st.form("problem_form", clear_on_submit=False):
     user_input = st.text_area(
         "🎯 Was ist dein Problem?",
         height=100,
-        placeholder="Beschreibe hier dein Problem detailliert..."
+        placeholder="Beschreibe hier dein Problem detailliert... (Ctrl+Enter zum Abschicken)"
     )
 
-with col2:
-    st.write("")
-    st.write("")
-    solve_button = st.button("🚀 Lösen", use_container_width=True, type="primary")
+    col1, col2, col3 = st.columns([1, 1, 8])
+    with col1:
+        solve_button = st.form_submit_button("🚀 Lösen", use_container_width=True, type="primary")
+    with col2:
+        pass
+    with col3:
+        st.caption("💡 Oder drücke Ctrl+Enter zum Abschicken")
 
 # Hauptlogik
 if solve_button and user_input:
