@@ -92,13 +92,22 @@ def extract_acceptance(verification_text):
 
     return False
 
-def extract_summary(text, max_lines=3):
-    """Extrahiert eine kurze Zusammenfassung aus Text."""
+def extract_short_summary(text, max_chars=150):
+    """Extrahiert eine sehr kurze Zusammenfassung für den Expander-Title."""
+    if not text:
+        return "Verarbeitet..."
+
+    # Entferne Markdown und nimm erste 150 Zeichen
     lines = text.split('\n')
-    summary = '\n'.join(lines[:max_lines])
-    if len(lines) > max_lines:
-        summary += "\n... (mehr Details)"
-    return summary
+    summary = ' '.join(lines)
+
+    # Entferne Markdown-Symbole
+    summary = summary.replace('#', '').replace('**', '').replace('*', '')
+
+    if len(summary) > max_chars:
+        summary = summary[:max_chars].rsplit(' ', 1)[0] + "..."
+
+    return summary.strip()
 
 def plan_phase(user_prompt, user_temperature):
     """Phase 1: Erstellt einen Plan."""
@@ -218,7 +227,11 @@ if "problem_result" not in st.session_state:
 # Eingabe für Problem
 col1, col2 = st.columns([4, 1])
 with col1:
-    user_input = st.text_area("🎯 Was ist dein Problem?", height=100, placeholder="Beschreibe hier dein Problem detailliert...")
+    user_input = st.text_area(
+        "🎯 Was ist dein Problem?",
+        height=100,
+        placeholder="Beschreibe hier dein Problem detailliert..."
+    )
 
 with col2:
     st.write("")
@@ -230,32 +243,31 @@ if solve_button and user_input:
     st.session_state.problem_result = None
 
     # Phase 1: Plan
-    with st.expander("📋 Phase 1: Planung", expanded=True):
-        with st.spinner("Der Agent erstellt einen Plan..."):
-            plan = plan_phase(user_input, user_temperature)
-            if plan:
-                summary = extract_summary(plan)
-                st.markdown(f"**Zusammenfassung:**\n{summary}")
+    with st.spinner("📋 Agent erstellt einen Plan..."):
+        plan = plan_phase(user_input, user_temperature)
+
+    plan_summary = extract_short_summary(plan)
+    with st.expander(f"📋 Phase 1: Planung — {plan_summary}", expanded=False):
+        st.markdown(plan)
 
     # Phase 2: Ausführung
-    with st.expander("🚀 Phase 2: Ausführung", expanded=True):
-        with st.spinner("Der Agent arbeitet an der Lösung..."):
-            solution = execution_phase(user_input, plan, user_temperature)
-            if solution:
-                summary = extract_summary(solution)
-                st.markdown(f"**Zusammenfassung:**\n{summary}")
+    with st.spinner("🚀 Agent arbeitet an der Lösung..."):
+        solution = execution_phase(user_input, plan, user_temperature)
+
+    solution_summary = extract_short_summary(solution)
+    with st.expander(f"🚀 Phase 2: Ausführung — {solution_summary}", expanded=False):
+        st.markdown(solution)
 
     # Refinement Loop
     refinement_count = 0
     while refinement_count < max_refinements:
         # Phase 3: Überprüfung
-        with st.expander(f"✅ Phase 3: Überprüfung", expanded=True):
-            with st.spinner("Der Agent überprüft die Lösung..."):
-                verification, is_acceptable = verification_phase(user_input, plan, solution, user_temperature)
+        with st.spinner("✅ Agent überprüft die Lösung..."):
+            verification, is_acceptable = verification_phase(user_input, plan, solution, user_temperature)
 
-                if verification:
-                    summary = extract_summary(verification)
-                    st.markdown(f"**Bewertung:**\n{summary}")
+        verification_summary = extract_short_summary(verification)
+        with st.expander(f"✅ Phase 3: Überprüfung — {verification_summary}", expanded=False):
+            st.markdown(verification)
 
         if is_acceptable:
             st.success("🎯 Problem erfolgreich gelöst!")
@@ -264,14 +276,19 @@ if solve_button and user_input:
         else:
             refinement_count += 1
             if refinement_count < max_refinements:
-                with st.expander(f"🔄 Phase 4: Verbesserung (Iteration {refinement_count})", expanded=True):
-                    with st.spinner("Der Agent verbessert die Lösung..."):
-                        solution = refinement_phase(user_prompt=user_input, plan=plan, solution=solution,
-                                                   feedback=verification, iteration=refinement_count,
-                                                   user_temperature=user_temperature)
-                        if solution:
-                            summary = extract_summary(solution)
-                            st.markdown(f"**Zusammenfassung der Verbesserungen:**\n{summary}")
+                with st.spinner(f"🔄 Agent verbessert die Lösung (Iteration {refinement_count})..."):
+                    solution = refinement_phase(
+                        user_prompt=user_input,
+                        plan=plan,
+                        solution=solution,
+                        feedback=verification,
+                        iteration=refinement_count,
+                        user_temperature=user_temperature
+                    )
+
+                refinement_summary = extract_short_summary(solution)
+                with st.expander(f"🔄 Phase 4: Verbesserung (Iteration {refinement_count}) — {refinement_summary}", expanded=False):
+                    st.markdown(solution)
             else:
                 st.warning(f"⚠️ Max. Iterationen ({max_refinements}) erreicht. Beste Lösung wird akzeptiert.")
                 st.session_state.problem_result = solution
@@ -283,21 +300,25 @@ if st.session_state.problem_result:
     st.markdown("## 🎉 FINALE LÖSUNG")
     st.markdown("---")
 
-    with st.container(border=True):
-        col1, col2 = st.columns([1, 4])
-        with col1:
-            st.markdown("### ✅")
-        with col2:
-            st.markdown("### Die optimierte Lösung:")
-
     # Große, gut lesbare Ausgabe
     st.markdown(f"""
-    <div style="background-color: #f0f8ff; padding: 30px; border-radius: 10px; border-left: 5px solid #0066cc;">
-
-    {st.session_state.problem_result}
-
+    <div style="
+        background-color: #f0f8ff;
+        padding: 30px;
+        border-radius: 10px;
+        border-left: 5px solid #0066cc;
+        font-size: 16px;
+        line-height: 1.8;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+        color: #1a1a1a;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    ">
+{st.session_state.problem_result}
     </div>
     """, unsafe_allow_html=True)
+
+    st.write("")  # Spacing
 
     # Download Button
     col1, col2, col3 = st.columns([1, 2, 1])
