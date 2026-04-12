@@ -12,14 +12,20 @@ def check_password():
     if not st.session_state.password_correct:
         st.set_page_config(page_title="AI Agent - Login", layout="centered")
         st.title("🔐 AI Agent Login")
-        password = st.text_input("Gib dein Passwort ein:", type="password")
 
-        if password:
+        password = st.text_input("Gib dein Passwort ein:", type="password", placeholder="Passwort...")
+
+        col1, col2, col3 = st.columns([1, 1, 1])
+        with col2:
+            login_button = st.button("🔓 Einloggen", use_container_width=True, type="primary")
+
+        if login_button:
             if password == st.secrets.get("APP_PASSWORD", "test123"):
                 st.session_state.password_correct = True
                 st.rerun()
             else:
                 st.error("❌ Falsches Passwort!")
+
         return False
 
     return True
