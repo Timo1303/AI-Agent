@@ -251,6 +251,15 @@ with st.sidebar:
 
     st.divider()
 
+    if st.button("🆕 Neues Problem", type="primary", use_container_width=True):
+        st.session_state[SESSION_KEY_CURRENT_CHAT_SESSION] = None
+        if "chat_history" in st.session_state:
+            del st.session_state["chat_history"]
+        if "problem_result" in st.session_state:
+            del st.session_state["problem_result"]
+        st.rerun()
+
+    st.divider()
 
     max_refinements = st.slider(
         "Max. Verbesserungsiterationen",
