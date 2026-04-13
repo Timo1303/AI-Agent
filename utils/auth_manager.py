@@ -152,8 +152,9 @@ def login_user(username: str, password: str) -> Tuple[bool, str, Optional[str]]:
     if not _verify_password(password, user_data.get('password_hash', '')):
         return False, "❌ Username oder Passwort falsch.", None
 
-    # Prüfe Status
-    if user_data.get('status') != 'approved':
+    # Prüfe Status - akzeptiere "approved" und "admin"
+    status = user_data.get('status')
+    if status not in ('approved', 'admin'):
         return False, "❌ Dein Account wurde noch nicht genehmigt.", None
 
     return True, f"✅ Willkommen, {username}!", user_uuid
