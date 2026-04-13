@@ -269,6 +269,47 @@ with st.sidebar:
 
     st.divider()
 
+
+    max_refinements = st.slider(
+        "Max. Verbesserungsiterationen",
+        min_value=1,
+        max_value=10,
+        value=5,
+        help="Wie oft soll der Agent die Lösung verbessern?"
+    )
+
+    user_temperature = st.slider(
+        "Temperatur (Kreativität)",
+        min_value=0.0,
+        max_value=1.0,
+        value=0.7,
+        step=0.1,
+        help="0.0 = präzise, 1.0 = kreativ"
+    )
+
+    st.divider()
+
+    # Chat-Verlauf Sidebar
+    st.subheader("📋 Chat-Verlauf")
+    with st.expander("Meine bisherigen Chats", expanded=False):
+        chat_history = storage_manager.get_chat_sessions_summary(st.session_state[SESSION_KEY_USER_ID])
+
+        if not chat_history:
+            st.caption("Noch keine Chats gespeichert.")
+        else:
+            for session in chat_history:
+                col1, col2 = st.columns([4, 1])
+                with col1:
+                    if st.button(
+                        f"📌 {session['created_at'][:10]}\n{session['problem_input_short']}",
+                        key=f"load_chat_{session['id']}",
+                        use_container_width=True
+                    ):
+                        st.session_state[SESSION_KEY_CURRENT_CHAT_SESSION] = session['id']
+                        st.rerun()
+
+    st.divider()
+
     # Admin-Bereich
     if auth_manager.is_admin(st.session_state[SESSION_KEY_USER_ID]):
         with st.expander("🛠️ Admin-Panel", expanded=False):
@@ -314,46 +355,6 @@ with st.sidebar:
                             auth_manager.delete_user(user_uuid)
                             st.success("Gelöscht!")
                             st.rerun()
-
-    st.divider()
-
-    max_refinements = st.slider(
-        "Max. Verbesserungsiterationen",
-        min_value=1,
-        max_value=10,
-        value=5,
-        help="Wie oft soll der Agent die Lösung verbessern?"
-    )
-
-    user_temperature = st.slider(
-        "Temperatur (Kreativität)",
-        min_value=0.0,
-        max_value=1.0,
-        value=0.7,
-        step=0.1,
-        help="0.0 = präzise, 1.0 = kreativ"
-    )
-
-    st.divider()
-
-    # Chat-Verlauf Sidebar
-    st.subheader("📋 Chat-Verlauf")
-    with st.expander("Meine bisherigen Chats", expanded=False):
-        chat_history = storage_manager.get_chat_sessions_summary(st.session_state[SESSION_KEY_USER_ID])
-
-        if not chat_history:
-            st.caption("Noch keine Chats gespeichert.")
-        else:
-            for session in chat_history:
-                col1, col2 = st.columns([4, 1])
-                with col1:
-                    if st.button(
-                        f"📌 {session['created_at'][:10]}\n{session['problem_input_short']}",
-                        key=f"load_chat_{session['id']}",
-                        use_container_width=True
-                    ):
-                        st.session_state[SESSION_KEY_CURRENT_CHAT_SESSION] = session['id']
-                        st.rerun()
 
     st.divider()
 
