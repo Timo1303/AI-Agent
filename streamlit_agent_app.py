@@ -369,7 +369,10 @@ with st.sidebar:
             del st.session_state["problem_result"]
         st.rerun()
 
-# Session State für Verlauf
+# Session State für Verlauf - FRÜH initialisieren (nach auth_check)
+if SESSION_KEY_CURRENT_CHAT_SESSION not in st.session_state:
+    st.session_state[SESSION_KEY_CURRENT_CHAT_SESSION] = None
+
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
 
