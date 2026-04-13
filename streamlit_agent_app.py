@@ -291,14 +291,14 @@ with st.sidebar:
             for session in chat_history:
                 col1, col2 = st.columns([5, 1])
                 with col1:
-                    # List-like single line format
-                    short_text = session['problem_input_short'].replace('\n', ' ')
-                    if len(short_text) > 25: short_text = short_text[:25] + "..."
+                    short_text = session['problem_input_short'].replace('\n', ' ').strip()
+                    if len(short_text) > 20: short_text = short_text[:17] + "..."
                     
                     if st.button(
-                        f"📌 {session['created_at'][:10]} | {short_text}",
+                        f"💬 {short_text}",
                         key=f"load_chat_{session['id']}",
-                        use_container_width=True
+                        use_container_width=True,
+                        help=f"Vom {session['created_at'][:10]}"
                     ):
                         st.session_state[SESSION_KEY_CURRENT_CHAT_SESSION] = session['id']
                         st.rerun()
