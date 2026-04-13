@@ -83,7 +83,7 @@ def _save_json(filepath: Path, data: Dict) -> None:
         json.dump(data, f, indent=2, ensure_ascii=False)
 
 
-def register_user(username: str, password: str, email: str) -> Tuple[bool, str]:
+def register_user(username: str, password: str) -> Tuple[bool, str]:
     """
     Registriere einen neuen Benutzer (wartet auf Admin-Genehmigung).
 
@@ -92,14 +92,14 @@ def register_user(username: str, password: str, email: str) -> Tuple[bool, str]:
     _ensure_data_files()
 
     # Validierung
-    if not username or not password or not email:
+    if not username or not password:
         return False, "❌ Alle Felder erforderlich."
 
     if len(username) < 3:
         return False, "❌ Username muss mindestens 3 Zeichen lang sein."
 
-    if len(password) < 6:
-        return False, "❌ Passwort muss mindestens 6 Zeichen lang sein."
+    if len(password) < 4:
+        return False, "❌ Passwort muss mindestens 4 Zeichen lang sein."
 
     # Prüfe ob Username bereits existiert
     users = _load_json(USERS_FILE)
@@ -119,7 +119,6 @@ def register_user(username: str, password: str, email: str) -> Tuple[bool, str]:
         "uuid": new_uuid,
         "username": username,
         "password_hash": _hash_password(password),
-        "email": email,
         "created_at": _get_timestamp()
     }
 
@@ -230,6 +229,13 @@ def get_user_info(user_uuid: str) -> Optional[Dict]:
     _ensure_data_files()
     users = _load_json(USERS_FILE)
     return users.get(user_uuid)
+
+
+def is_admin(user_uuid: str) -> bool:
+    """Prüfe ob ein Benutzer Admin ist."""
+    _ensure_data_files()
+    user_info = get_user_info(user_uuid)
+    return user_info is not None and user_info.get('status') == 'admin'
 
 
 def delete_user(user_uuid: str) -> Tuple[bool, str]:

@@ -1,1 +1,10 @@
-{}
+{
+  "2dffdf2d-0b39-4f74-a569-e81cf7a28e82": {
+    "uuid": "2dffdf2d-0b39-4f74-a569-e81cf7a28e82",
+    "username": "timo",
+    "password_hash": "bc76bebccdd4f0db8d002e78aa168c03f11077e1db46a3fe425a3a5fa3cd8b91$d14d569b8172cf986cfa4a6166371a6ccb35cc2c81c5529284351f3686acacc2",
+    "status": "admin",
+    "created_at": "2026-04-13T19:08:03Z",
+    "approved_at": "2026-04-13T19:08:03Z"
+  }
+}

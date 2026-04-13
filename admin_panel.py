@@ -73,7 +73,6 @@ with tab1:
 
                 with col1:
                     st.write(f"**Username:** {user_data.get('username', 'N/A')}")
-                    st.write(f"**Email:** {user_data.get('email', 'N/A')}")
 
                 with col2:
                     st.write(f"**Registriert:** {user_data.get('created_at', 'N/A')[:10]}")
@@ -112,20 +111,17 @@ with tab2:
         # Tabelle
         for user_uuid, user_data in sorted(all_users.items(), key=lambda x: x[1].get('created_at', ''), reverse=True):
             with st.container(border=True):
-                col1, col2, col3, col4 = st.columns([2, 2, 2, 1])
+                col1, col2, col3 = st.columns([2, 2, 1])
 
                 with col1:
                     st.write(f"**Username:** {user_data.get('username', 'N/A')}")
 
                 with col2:
-                    st.write(f"**Email:** {user_data.get('email', 'N/A')}")
-
-                with col3:
                     created = user_data.get('created_at', 'N/A')[:10]
                     approved = user_data.get('approved_at', 'N/A')[:10]
                     st.write(f"**Beigetreten:** {created}\n**Genehmigt:** {approved}")
 
-                with col4:
+                with col3:
                     if st.button("🗑 Löschen", key=f"delete_{user_uuid}", use_container_width=True, type="secondary"):
                         success, message = auth_manager.delete_user(user_uuid)
                         if success:
