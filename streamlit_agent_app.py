@@ -289,14 +289,24 @@ with st.sidebar:
             st.caption("Noch keine Chats gespeichert.")
         else:
             for session in chat_history:
-                col1, col2 = st.columns([4, 1])
+                col1, col2 = st.columns([5, 1])
                 with col1:
+                    # List-like single line format
+                    short_text = session['problem_input_short'].replace('\n', ' ')
+                    if len(short_text) > 25: short_text = short_text[:25] + "..."
+                    
                     if st.button(
-                        f"📌 {session['created_at'][:10]}\n{session['problem_input_short']}",
+                        f"📌 {session['created_at'][:10]} | {short_text}",
                         key=f"load_chat_{session['id']}",
                         use_container_width=True
                     ):
                         st.session_state[SESSION_KEY_CURRENT_CHAT_SESSION] = session['id']
+                        st.rerun()
+                with col2:
+                    if st.button("🗑️", key=f"del_chat_{session['id']}", help="Löschen", use_container_width=True):
+                        storage_manager.delete_chat_session(st.session_state[SESSION_KEY_USER_ID], session['id'])
+                        if st.session_state.get(SESSION_KEY_CURRENT_CHAT_SESSION) == session['id']:
+                            st.session_state[SESSION_KEY_CURRENT_CHAT_SESSION] = None
                         st.rerun()
 
     st.divider()
