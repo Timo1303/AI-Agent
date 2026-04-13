@@ -257,11 +257,8 @@ with st.sidebar:
     st.header("⚙️ Einstellungen")
 
     # User-Info
-    st.info(f"👤 Angemeldet als: **{st.session_state[SESSION_KEY_USERNAME]}**")
-
-    # Admin-Badge
-    if auth_manager.is_admin(st.session_state[SESSION_KEY_USER_ID]):
-        st.success("🔐 **ADMIN-MODUS**")
+    admin_suffix = " *(Admin)*" if auth_manager.is_admin(st.session_state[SESSION_KEY_USER_ID]) else ""
+    st.info(f"👤 Angemeldet als: **{st.session_state[SESSION_KEY_USERNAME]}**{admin_suffix}")
 
     if st.button("🚪 Ausloggen", use_container_width=True):
         st.session_state[SESSION_KEY_AUTHENTICATED] = False
@@ -290,12 +287,12 @@ with st.sidebar:
                     with col2:
                         col_app, col_rej = st.columns(2)
                         with col_app:
-                            if st.button("✅", key=f"app_{user_uuid}", use_container_width=True):
+                            if st.button("✔", help="Genehmigen", key=f"app_{user_uuid}", use_container_width=True):
                                 auth_manager.approve_user(user_uuid)
                                 st.success("Genehmigt!")
                                 st.rerun()
                         with col_rej:
-                            if st.button("❌", key=f"rej_{user_uuid}", use_container_width=True):
+                            if st.button("✖", help="Ablehnen", key=f"rej_{user_uuid}", use_container_width=True):
                                 auth_manager.reject_user(user_uuid)
                                 st.success("Abgelehnt!")
                                 st.rerun()
@@ -359,7 +356,6 @@ with st.sidebar:
                         st.rerun()
 
     st.divider()
-    st.info("💡 Der Agent wird dein Problem analysieren, einen Plan erstellen, die Lösung entwickeln und dann überprüfen & verbessern!")
 
     if st.button("🆕 Neues Problem", use_container_width=True):
         st.session_state[SESSION_KEY_CURRENT_CHAT_SESSION] = None
