@@ -427,13 +427,9 @@ else:
             placeholder="Beschreibe hier dein Problem detailliert... (Ctrl+Enter zum Abschicken)"
         )
 
-        col1, col2, col3 = st.columns([1, 1, 8])
+        col1, col2 = st.columns([2, 8])
         with col1:
             solve_button = st.form_submit_button("🚀 Lösen", use_container_width=True, type="primary")
-        with col2:
-            pass
-        with col3:
-            st.caption("💡 Oder drücke Ctrl+Enter zum Abschicken")
 
     # Hauptlogik
     if solve_button and user_input:
