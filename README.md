@@ -54,7 +54,7 @@ echo "APP_PASSWORD=your-password-here" >> .env
 streamlit run streamlit_agent_app.py
 ```
 
-Die App läuft dann auf `http://localhost:8501` 🎉
+Die App startet nun in deinem Browser! 🎉
 
 ---
 
