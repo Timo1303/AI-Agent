@@ -5,6 +5,10 @@ from datetime import datetime
 from dotenv import load_dotenv
 from openai import OpenAI
 import sys
+import json
+import re
+import concurrent.futures
+from duckduckgo_search import DDGS
 
 # Importiere Utils
 sys.path.insert(0, str(os.path.dirname(__file__)))
@@ -153,45 +157,72 @@ def extract_short_summary(text, max_chars=150):
 
     return summary.strip()
 
-def plan_phase(user_prompt, user_temperature):
-    """Phase 1: Erstellt einen Plan."""
-    system_prompt = """Du bist ein Plan-ersteller. DEINE EINZIGE AUFGABE ist es, einen detaillierten Plan zur Lösung des Problems zu erstellen.
+def extract_json_from_response(text):
+    if not text: return None
+    try:
+        return json.loads(text)
+    except: pass
+    try:
+        match = re.search(r'```(?:json)?\s*(.*?)\s*```', text, re.DOTALL)
+        if match: return json.loads(match.group(1))
+    except: pass
+    try:
+        match = re.search(r'\{.*\}', text, re.DOTALL)
+        if match: return json.loads(match.group(0))
+    except: pass
+    return None
 
-WICHTIG: Erstelle NUR einen Plan, keine Lösung!
-- Analysiere das Problem
-- Erstelle Lösungsschritte
-- Definiere Erfolgskriterien
+def orchestrator_plan_phase(user_prompt, user_temperature):
+    system_prompt = """Du bist ein Master-Orchestrator für ein Problemlösungs-System.
+DEINE EINZIGE AUFGABE ist es, das Problem zu analysieren und EINEN STRUKTURIERTEN JSON-PLAN zurückzugeben.
 
-Format:
-1. PROBLEM-ANALYSE: Kurze Zusammenfassung
-2. LÖSUNGSSCHRITTE: Nummerierte Liste der Schritte
-3. ERFOLGS-KRITERIUM: Woran erkenne ich, dass das Problem gelöst ist?
+Regeln:
+1. Entscheide, ob für die Lösung aktuelles Wissen oder Daten aus dem Internet nötig sind. Wenn ja, setze 'requires_search' auf true und nenne 1-4 'search_queries'.
+2. Entscheide, ob das Problem groß genug ist, um es in unabhängige 'sub_tasks' aufzuteilen, die parallel gelöst werden können.
+3. Antworte AUSSCHLIESSLICH mit gültigem JSON! Wenn du keinen Code generierst, bist du nutzlos.
 
-Stoppe nach dem Plan. Fange NICHT mit der Lösung an!"""
-
-    messages = [{"role": "user", "content": f"Erstelle einen Plan für: {user_prompt}"}]
+JSON-Format:
+{
+  "analysis": "Kurze Problemanalyse",
+  "requires_search": true,
+  "search_queries": ["begriff 1", "begriff 2"],
+  "is_parallelizable": true,
+  "sub_tasks": [{"id": 1, "task": "Teil 1"}, {"id": 2, "task": "Teil 2"}],
+  "success_criteria": "Wann ist das Problem fertig gelöst?"
+}"""
+    messages = [{"role": "user", "content": f"Problem: {user_prompt}"}]
     return query_agent(messages, system_prompt, user_temperature=user_temperature)
 
-def execution_phase(user_prompt, plan, user_temperature):
-    """Phase 2: Arbeitet den Plan ab."""
-    system_prompt = """Du bist ein Problemlöser. DEINE EINZIGE AUFGABE ist es, den gegebenen Plan Schritt für Schritt UMZUSETZEN.
+def search_phase(queries):
+    results_text = "INTERNET RECHERCHE ERGEBNISSE:\n=========================\n"
+    for query in queries:
+        try:
+            results = DDGS().text(query, max_results=3)
+            results_text += f"\n--- Suchergebnisse für '{query}' ---\n"
+            for r in results:
+                results_text += f"Quelle: {r.get('title')}\nURL: {r.get('href')}\nAuszug: {r.get('body')}\n\n"
+        except Exception as e:
+            results_text += f"\nFehler bei Suche '{query}': {str(e)}\n"
+    return results_text
+
+def execution_phase(user_prompt, sub_task, internet_context, user_temperature):
+    system_prompt = """Du bist ein Lösungs-Entwickler. 
+DEINE EINZIGE AUFGABE ist es, das Problem basierend auf deiner Teilaufgabe UMZUSETZEN.
 
 WICHTIG:
-- Folge NUR dem Plan
-- Implementiere die Lösungsschritte
-- Gib am Ende eine klare ZUSAMMENFASSUNG der Lösung
-
-Erstelle KEINE neuen Pläne, KEINE Überprüfungen - nur die Umsetzung!"""
-
-    messages = [
-        {"role": "user", "content": f"""Problem: {user_prompt}
-
-Plan:\n{plan}
-
-Setze diesen Plan Punkt für Punkt um und erstelle die Lösung."""}
-    ]
-
+- Erstelle die Lösung für deine spezifische Aufgabe in voller Tiefe.
+- Erstelle auch Code, falls angefordert."""
+    context_block = f"\nVorwissen (Internet):\n{internet_context}\n" if internet_context else ""
+    task_desc = f"Gesamtproblem: {user_prompt}\n\nDeine aktuelle Aufgabe:\n{sub_task}"
+    messages = [{"role": "user", "content": f"{task_desc}{context_block}\n\nLöse nun deine Aufgabe."}]
     return query_agent(messages, system_prompt, max_tokens=3000, user_temperature=user_temperature)
+
+def assembly_phase(user_prompt, compiled_results, user_temperature):
+    system_prompt = """Du bist ein Integrations-Spezialist. 
+Führe mehrere Teilergebnisse von verschiedenen Agenten in eine finale Gesamtlösung zusammen. 
+Füge keine neuen Features hinzu, baue sie nur kohärent zusammen."""
+    messages = [{"role": "user", "content": f"Problem:\n{user_prompt}\n\nTeilergebnisse:\n{compiled_results}\n\nKombiniere sie zu einer Gesamtlösung."}]
+    return query_agent(messages, system_prompt, max_tokens=4000, user_temperature=user_temperature)
 
 def verification_phase(user_prompt, plan, solution, user_temperature):
     """Phase 3: Überprüft die Lösung."""
@@ -398,9 +429,12 @@ if st.session_state[SESSION_KEY_CURRENT_CHAT_SESSION]:
 
             # Nice Phase-Namen
             phase_titles = {
-                "planning": "📋 Phase 1: Planung",
-                "execution": "🚀 Phase 2: Ausführung",
-                "verification": "✅ Phase 3: Überprüfung",
+                "planning": "📋 Phase 1: Strategie",
+                "search": "🌐 Phase 2: Web-Recherche",
+                "parallel_execution": "🚀 Phase 3: Parallele Ausführung",
+                "execution": "🚀 Phase 3: Ausführung",
+                "assembly": "🧩 Phase 4: Zusammenbau",
+                "verification": "✅ Phase 5: Überprüfung",
             }
 
             if "refinement" in phase_name:
@@ -460,40 +494,95 @@ else:
         )
 
         # Phase 1: Plan
-        with st.spinner("📋 Agent erstellt einen Plan..."):
+        with st.spinner("📋 Agent orchestriert das Problem..."):
             start_time = time.time()
-            plan = plan_phase(user_input, user_temperature)
+            plan_raw = orchestrator_plan_phase(user_input, user_temperature)
+            plan_json = extract_json_from_response(plan_raw)
             duration = time.time() - start_time
+            plan = json.dumps(plan_json, indent=2, ensure_ascii=False) if plan_json else plan_raw
 
         storage_manager.add_phase_to_session(
-            st.session_state[SESSION_KEY_USER_ID],
-            chat_session_uuid,
-            "planning",
-            plan, # type: ignore
-            duration_seconds=duration
+            st.session_state[SESSION_KEY_USER_ID], chat_session_uuid,
+            "planning", plan, duration_seconds=duration
         )
 
-        plan_summary = extract_short_summary(plan)
-        with st.expander(f"📋 Phase 1: Planung — {plan_summary}", expanded=False):
-            st.markdown(plan)
+        plan_summary = "Strategie-Plan erstellt"
+        with st.expander(f"📋 Phase 1: Strategie — {plan_summary}", expanded=False):
+            if plan_json:
+                st.json(plan_json)
+            else:
+                st.markdown(plan)
 
-        # Phase 2: Ausführung
-        with st.spinner("🚀 Agent arbeitet an der Lösung..."):
-            start_time = time.time()
-            solution = execution_phase(user_input, plan, user_temperature)
-            duration = time.time() - start_time
+        if not plan_json:
+            plan_json = {"requires_search": False, "is_parallelizable": False, "sub_tasks": [{"id": 1, "task": user_input}]}
 
-        storage_manager.add_phase_to_session(
-            st.session_state[SESSION_KEY_USER_ID],
-            chat_session_uuid,
-            "execution",
-            solution, # type: ignore
-            duration_seconds=duration
-        )
+        # Phase 2: Internet Search (if needed)
+        internet_context = ""
+        if plan_json.get("requires_search") and plan_json.get("search_queries"):
+            search_queries = plan_json.get("search_queries", [])
+            with st.spinner(f"🌐 Agent sucht für {len(search_queries)} Begriffe im Internet..."):
+                start_time = time.time()
+                internet_context = search_phase(search_queries)
+                duration = time.time() - start_time
+                
+            storage_manager.add_phase_to_session(
+                st.session_state[SESSION_KEY_USER_ID], chat_session_uuid,
+                "search", internet_context, duration_seconds=duration
+            )
+            with st.expander(f"🌐 Phase 2: Web-Recherche — Abgeschlossen", expanded=False):
+                st.markdown(internet_context)
 
-        solution_summary = extract_short_summary(solution)
-        with st.expander(f"🚀 Phase 2: Ausführung — {solution_summary}", expanded=False):
-            st.markdown(solution)
+        # Phase 3: Ausführung
+        solution = ""
+        sub_tasks = plan_json.get("sub_tasks", [])
+        
+        if plan_json.get("is_parallelizable") and len(sub_tasks) > 1:
+            with st.spinner(f"🚀 {len(sub_tasks)} Agenten arbeiten parallel an Teilaufgaben..."):
+                start_time = time.time()
+                def run_sub_task(task_obj):
+                    return execution_phase(user_input, task_obj.get('task', ''), internet_context, user_temperature)
+                
+                with concurrent.futures.ThreadPoolExecutor(max_workers=min(5, len(sub_tasks))) as executor:
+                    futures = {executor.submit(run_sub_task, t): t for t in sub_tasks}
+                    compiled_results = ""
+                    for future in concurrent.futures.as_completed(futures):
+                        t = futures[future]
+                        res = future.result()
+                        compiled_results += f"=== Ergebnis Teilaufgabe {t.get('id', '?')} ===\n{res}\n\n"
+                duration = time.time() - start_time
+                
+            storage_manager.add_phase_to_session(
+                st.session_state[SESSION_KEY_USER_ID], chat_session_uuid,
+                "parallel_execution", compiled_results, duration_seconds=duration
+            )
+            with st.expander(f"🚀 Phase 3: Parallele Ausführung ({len(sub_tasks)} Tasks beendet)", expanded=False):
+                st.markdown(compiled_results)
+                
+            # Phase 4: Zusammenbau
+            with st.spinner("🧩 Agent setzt Teillösungen zusammen..."):
+                start_time = time.time()
+                solution = assembly_phase(user_input, compiled_results, user_temperature)
+                duration = time.time() - start_time
+                
+            storage_manager.add_phase_to_session(
+                st.session_state[SESSION_KEY_USER_ID], chat_session_uuid,
+                "assembly", solution, duration_seconds=duration
+            )
+            with st.expander(f"🧩 Phase 4: Zusammenbau der Teillösungen", expanded=False):
+                st.markdown(solution)
+        else:
+            with st.spinner("🚀 Agent arbeitet sequenziell an der Lösung..."):
+                start_time = time.time()
+                single_task = sub_tasks[0].get("task", user_input) if sub_tasks else user_input
+                solution = execution_phase(user_input, single_task, internet_context, user_temperature)
+                duration = time.time() - start_time
+
+            storage_manager.add_phase_to_session(
+                st.session_state[SESSION_KEY_USER_ID], chat_session_uuid,
+                "execution", solution, duration_seconds=duration
+            )
+            with st.expander(f"🚀 Phase 3: Ausführung", expanded=False):
+                st.markdown(solution)
 
         # Refinement Loop
         refinement_count = 0
