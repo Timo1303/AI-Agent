@@ -47,22 +47,34 @@
         <!-- MAIN INTERFACE -->
         <div id="main-screen" class="glass-panel hidden">
             <!-- Sidebar -->
-            <aside class="sidebar">
-                <div class="user-profile">
-                    <div class="avatar"><i data-lucide="user"></i></div>
-                    <div class="user-info">
-                        <span id="display-username">Username</span>
-                        <span class="badge" id="role-badge">User</span>
+            <aside class="sidebar" id="app-sidebar">
+                <div class="sidebar-header">
+                    <div class="user-profile">
+                        <div class="avatar"><i data-lucide="user"></i></div>
+                        <div class="user-info">
+                            <span id="display-username">Username</span>
+                            <span class="badge" id="role-badge">User</span>
+                        </div>
                     </div>
+                    <!-- Toggle Button -->
+                    <button class="toggle-sidebar" onclick="toggleSidebar()"><i data-lucide="menu"></i></button>
                 </div>
 
                 <div class="nav-links">
-                    <button class="nav-btn active" onclick="showView('chat')"><i data-lucide="message-square"></i> Problemlöser</button>
-                    <button class="nav-btn" onclick="showView('history')"><i data-lucide="history"></i> Verlauf</button>
-                    <button class="nav-btn" id="admin-nav-btn" onclick="showView('admin')" style="display:none;"><i data-lucide="shield"></i> Admin Panel</button>
+                    <button class="nav-btn active" onclick="showView('chat')" title="Problemlöser"><i data-lucide="message-square"></i> <span class="nav-text">Problemlöser</span></button>
+                    <button class="nav-btn" id="admin-nav-btn" onclick="showView('admin')" style="display:none;" title="Admin Panel"><i data-lucide="shield"></i> <span class="nav-text">Admin Panel</span></button>
                 </div>
 
-                <button class="logout-btn" onclick="logout()"><i data-lucide="log-out"></i> Ausloggen</button>
+                <div class="sidebar-history-section">
+                    <div class="history-title">
+                        <i data-lucide="history"></i> <span class="nav-text">Dein Verlauf</span>
+                    </div>
+                    <div id="sidebar-history-list" class="sidebar-list">
+                        <!-- History Items Go Here -->
+                    </div>
+                </div>
+
+                <button class="logout-btn" onclick="logout()" title="Ausloggen"><i data-lucide="log-out"></i> <span class="nav-text">Ausloggen</span></button>
             </aside>
 
             <!-- Chat View -->
@@ -87,24 +99,16 @@
                 </div>
             </main>
 
-            <!-- History View -->
-            <main id="view-history" class="view-content">
-                <div class="chat-header">
-                    <h2>Dein Chat-Verlauf</h2>
-                </div>
-                <div class="admin-lists">
-                    <div id="history-list" class="user-list">Lade Verlauf...</div>
-                </div>
-            </main>
-
             <!-- Admin View -->
             <main id="view-admin" class="view-content">
                 <div class="chat-header">
                     <h2>Admin Panel</h2>
                 </div>
-                <div class="admin-lists">
-                    <h3>Ausstehende Genehmigungen</h3>
-                    <div id="pending-list" class="user-list">Keine Anfragen</div>
+                <div class="admin-wrapper" style="max-width: 800px; margin: 0 auto; width: 100%;">
+                    <div class="admin-lists">
+                        <h3 style="margin-bottom: 20px; text-align: center;">Ausstehende Genehmigungen</h3>
+                        <div id="pending-list" class="user-list">Lade...</div>
+                    </div>
                 </div>
             </main>
         </div>

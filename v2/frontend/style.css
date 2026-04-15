@@ -200,15 +200,45 @@ input:focus {
     padding: 24px;
     display: flex;
     flex-direction: column;
+    transition: width 0.3s ease, padding 0.3s ease;
 }
+
+.sidebar.collapsed {
+    width: 80px;
+    padding: 24px 15px;
+}
+
+.sidebar.collapsed .nav-text, 
+.sidebar.collapsed .user-info {
+    display: none;
+}
+
+.sidebar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 24px;
+    border-bottom: 1px solid var(--panel-border);
+    margin-bottom: 24px;
+}
+
+.toggle-sidebar {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    padding: 8px;
+}
+.toggle-sidebar:hover { background: rgba(255,255,255,0.05); color: white; }
 
 .user-profile {
     display: flex;
     align-items: center;
     gap: 15px;
-    padding-bottom: 24px;
-    border-bottom: 1px solid var(--panel-border);
-    margin-bottom: 24px;
 }
 .avatar {
     width: 45px;
@@ -258,6 +288,54 @@ input:focus {
 }
 .logout-btn { margin-top: auto; color: #ef4444; }
 .logout-btn:hover { background: rgba(239, 68, 68, 0.1); }
+
+.sidebar-history-section {
+    margin-top: 20px;
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+}
+.history-title {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 8px;
+}
+.sidebar-list {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+.sidebar-history-item {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    padding: 10px 16px;
+    border-radius: 8px;
+    text-align: left;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: background 0.2s;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.sidebar-history-item:hover {
+    background: rgba(255,255,255,0.05);
+    color: var(--text-main);
+}
+.sidebar-history-item span.icon { display: none; }
+.sidebar.collapsed .sidebar-history-item { padding: 10px; text-align: center; }
+.sidebar.collapsed .sidebar-history-item span.text { display: none; }
+.sidebar.collapsed .sidebar-history-item span.icon { display: inline; }
+.sidebar.collapsed .history-title { padding: 12px 0; justify-content: center; }
 
 /* Main Content Area */
 .view-content {

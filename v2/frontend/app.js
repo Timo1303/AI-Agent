@@ -85,7 +85,7 @@ function initApp() {
 
     document.getElementById('display-username').innerText = currentUser.username;
 
-    if (currentUser.is_admin) {
+    if(currentUser.is_admin) {
         document.getElementById('role-badge').innerText = 'Admin';
         document.getElementById('role-badge').style.color = '#f59e0b';
         document.getElementById('admin-nav-btn').style.display = 'flex';
@@ -95,18 +95,25 @@ function initApp() {
         document.getElementById('role-badge').style.color = 'var(--text-muted)';
         document.getElementById('admin-nav-btn').style.display = 'none';
     }
+    
+    // Automatisch aufladen, da es jetzt immer in der Sidebar sichtbar ist:
+    loadHistory();
 }
+
 
 function showView(viewId) {
     document.querySelectorAll('.view-content').forEach(v => v.classList.remove('active'));
     document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
     
     document.getElementById(`view-${viewId}`).classList.add('active');
-    event.currentTarget.classList.add('active');
-
-    if(viewId === 'history') {
-        loadHistory();
+    if (event && event.currentTarget) {
+        event.currentTarget.classList.add('active');
     }
+}
+
+// Sidebar Toggle
+function toggleSidebar() {
+    document.getElementById('app-sidebar').classList.toggle('collapsed');
 }
 
 // History Logic
@@ -114,28 +121,26 @@ async function loadHistory() {
     try {
         const res = await fetch(`${API_URL}/history?user_id=${currentUser.user_id}`);
         const data = await res.json();
-        const list = document.getElementById('history-list'); // Assumes we add this to index.html
-        if (!list) return; // If missing in DOM, ignore
+        const list = document.getElementById('sidebar-history-list');
+        if (!list) return;
         list.innerHTML = '';
         
         if(!data.sessions || data.sessions.length === 0) {
-            list.innerHTML = '<div style="color:var(--text-muted); text-align:center; padding: 20px;">Noch kein Verlauf vorhanden</div>';
+            list.innerHTML = '<div style="color:var(--text-muted); text-align:center; padding: 20px; font-size: 0.8rem;">Kein Verlauf</div>';
             return;
         }
 
         data.sessions.forEach(session => {
-            const card = document.createElement('div');
-            card.className = 'user-card';
+            const card = document.createElement('button');
+            card.className = 'sidebar-history-item';
+            card.title = session.problem_input_short;
+            
             card.innerHTML = `
-                <div>
-                    <h4 style="margin-bottom: 5px;">Problem: ${session.problem_input_short.substring(0, 50)}...</h4>
-                    <span style="font-size:0.8rem; color:var(--text-muted); margin-right: 15px;">📅 ${session.created_at.substring(0, 10)}</span>
-                    <span style="font-size:0.8rem; color:var(--text-muted)">🔄 ${session.phases_count} Schritte</span>
-                </div>
-                <div class="user-card-actions">
-                    <button class="btn-reject" onclick="deleteHistory('${session.id}')">🗑️</button>
-                </div>
+                <span class="icon">📝</span>
+                <span class="text">${session.problem_input_short.substring(0, 20)}...</span>
             `;
+            // Optionale Aktion beim Klick: Chat laden (Backend endpoint fehlt dafür in V2 aktuell)
+            // card.onclick = () => loadChatSession(session.id);
             list.appendChild(card);
         });
     } catch(e) {
@@ -279,9 +284,32 @@ function startAgent() {
             stream.appendChild(row);
         }
 
-        stream.scrollTop = stream.scrollHeight;
         if(data.type !== 'done' && data.type !== 'error') {
             showLoader(stream); // Put loader back until done
         }
     };
 }
+
+// Keyboard Events
+document.addEventListener('DOMContentLoaded', () => {
+    // Login with Enter
+    document.getElementById('login-password').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') login();
+    });
+    document.getElementById('login-username').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') login();
+    });
+
+    // Chat with Enter / Ctrl+Enter (Shift+Enter for newline)
+    document.getElementById('problem-input').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            if (e.shiftKey) {
+                // Allows default behavior (newline)
+                return; 
+            } else {
+                e.preventDefault(); // Prevent newline
+                startAgent();
+            }
+        }
+    });
+});
