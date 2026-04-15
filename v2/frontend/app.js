@@ -1,7 +1,7 @@
 // ==========================================
 // EINSTELLUNGEN:
 // Wenn du die App auf Render hochlädst, trage hier die URL ein:
-const RENDER_DOMAIN = 'dein-app-name.onrender.com';
+const RENDER_DOMAIN = 'ai-agent-jfmf.onrender.com';
 // ==========================================
 
 const isProd = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
@@ -15,13 +15,13 @@ let currentSocket = null;
 function switchAuthTab(tab) {
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
     event.target.classList.add('active');
-    
+
     document.getElementById('login-form').style.display = tab === 'login' ? 'block' : 'none';
     document.getElementById('register-form').style.display = tab === 'register' ? 'block' : 'none';
     document.getElementById('auth-message').innerText = '';
 }
 
-function showMessage(msg, isError=false) {
+function showMessage(msg, isError = false) {
     const el = document.getElementById('auth-message');
     el.innerText = msg;
     el.style.color = isError ? '#ef4444' : '#4ade80';
@@ -34,15 +34,15 @@ async function login() {
     try {
         const res = await fetch(`${API_URL}/auth/login`, {
             method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({username: u, password: p})
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: u, password: p })
         });
         const data = await res.json();
-        if(!res.ok) throw new Error(data.detail);
-        
+        if (!res.ok) throw new Error(data.detail);
+
         currentUser = data;
         initApp();
-    } catch(e) {
+    } catch (e) {
         showMessage(e.message, true);
     }
 }
@@ -53,13 +53,13 @@ async function register() {
     try {
         const res = await fetch(`${API_URL}/auth/register`, {
             method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({username: u, password: p})
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: u, password: p })
         });
         const data = await res.json();
-        if(!res.ok) throw new Error(data.detail);
+        if (!res.ok) throw new Error(data.detail);
         showMessage(data.message);
-    } catch(e) {
+    } catch (e) {
         showMessage(e.message, true);
     }
 }
@@ -84,8 +84,8 @@ function initApp() {
     }, 500);
 
     document.getElementById('display-username').innerText = currentUser.username;
-    
-    if(currentUser.is_admin) {
+
+    if (currentUser.is_admin) {
         document.getElementById('role-badge').innerText = 'Admin';
         document.getElementById('role-badge').style.color = '#f59e0b';
         document.getElementById('admin-nav-btn').style.display = 'flex';
@@ -100,22 +100,22 @@ function initApp() {
 function showView(viewId) {
     document.querySelectorAll('.view-content').forEach(v => v.classList.remove('active'));
     document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-    
+
     document.getElementById(`view-${viewId}`).classList.add('active');
     event.currentTarget.classList.add('active');
 }
 
 // Admin Logic
 async function loadAdminPanel() {
-    if(!currentUser?.is_admin) return;
+    if (!currentUser?.is_admin) return;
     try {
         const res = await fetch(`${API_URL}/admin/pending?user_id=${currentUser.user_id}`);
         const data = await res.json();
-        
+
         const list = document.getElementById('pending-list');
         list.innerHTML = '';
-        
-        if(Object.keys(data.pending_users).length === 0) {
+
+        if (Object.keys(data.pending_users).length === 0) {
             list.innerHTML = '<div class="user-card" style="justify-content:center; color: var(--text-muted)">✅ Keine Warteraum-Einträge</div>';
             return;
         }
@@ -126,7 +126,7 @@ async function loadAdminPanel() {
             card.innerHTML = `
                 <div>
                     <h4>${user.username}</h4>
-                    <span style="font-size:0.8rem; color:var(--text-muted)">${user.created_at.substring(0,10)}</span>
+                    <span style="font-size:0.8rem; color:var(--text-muted)">${user.created_at.substring(0, 10)}</span>
                 </div>
                 <div class="user-card-actions">
                     <button class="btn-approve" onclick="approveUser('${uuid}')">✔</button>
@@ -135,23 +135,23 @@ async function loadAdminPanel() {
             `;
             list.appendChild(card);
         }
-    } catch(e) {
+    } catch (e) {
         console.error("Admin Load Error", e);
     }
 }
 
 async function approveUser(uuid) {
-    await fetch(`${API_URL}/admin/approve/${uuid}?user_id=${currentUser.user_id}`, {method: 'POST'});
+    await fetch(`${API_URL}/admin/approve/${uuid}?user_id=${currentUser.user_id}`, { method: 'POST' });
     loadAdminPanel();
 }
 
 // Agent WebSocket Logic
 function startAgent() {
     const input = document.getElementById('problem-input').value;
-    if(!input) return;
-    
+    if (!input) return;
+
     document.getElementById('problem-input').value = '';
-    
+
     const stream = document.getElementById('chat-stream');
     stream.innerHTML = `
         <div class="agent-message user-msg">
@@ -159,10 +159,10 @@ function startAgent() {
         </div>
     `;
 
-    if(currentSocket) currentSocket.close();
-    
+    if (currentSocket) currentSocket.close();
+
     currentSocket = new WebSocket(WS_URL);
-    
+
     currentSocket.onopen = () => {
         currentSocket.send(JSON.stringify({
             user_id: currentUser.user_id,
@@ -174,11 +174,11 @@ function startAgent() {
     currentSocket.onmessage = (event) => {
         const data = JSON.parse(event.data);
         console.log(data);
-        
+
         const msgDiv = document.createElement('div');
         msgDiv.className = 'agent-message';
 
-        if(data.type === 'action_started') {
+        if (data.type === 'action_started') {
             msgDiv.innerHTML = `
                 <div class="agent-action">⚙️ ${data.action}</div>
                 <div class="agent-thought">🧠 ${data.thought}</div>
