@@ -77,6 +77,22 @@ async def approve(pending_uuid: str, user_id: str):
     success, msg = auth_manager.approve_user(pending_uuid)
     return {"success": success, "message": msg}
 
+# === HISTORY ENDPOINTS ===
+@app.get("/api/history")
+async def get_history(user_id: str):
+    # Verify user exists
+    if not auth_manager.get_user_info(user_id):
+        raise HTTPException(status_code=401, detail="User not found")
+    history = storage_manager.get_chat_sessions_summary(user_id)
+    return {"sessions": history}
+
+@app.delete("/api/history/{session_id}")
+async def delete_history(session_id: str, user_id: str):
+    if not auth_manager.get_user_info(user_id):
+        raise HTTPException(status_code=401, detail="User not found")
+    success = storage_manager.delete_chat_session(user_id, session_id)
+    return {"success": success}
+
 # === WEBSOCKET CHAT AGENT ===
 @app.websocket("/api/ws/chat")
 async def websocket_chat(websocket: WebSocket):

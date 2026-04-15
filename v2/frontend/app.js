@@ -100,9 +100,52 @@ function initApp() {
 function showView(viewId) {
     document.querySelectorAll('.view-content').forEach(v => v.classList.remove('active'));
     document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-
+    
     document.getElementById(`view-${viewId}`).classList.add('active');
     event.currentTarget.classList.add('active');
+
+    if(viewId === 'history') {
+        loadHistory();
+    }
+}
+
+// History Logic
+async function loadHistory() {
+    try {
+        const res = await fetch(`${API_URL}/history?user_id=${currentUser.user_id}`);
+        const data = await res.json();
+        const list = document.getElementById('history-list'); // Assumes we add this to index.html
+        if (!list) return; // If missing in DOM, ignore
+        list.innerHTML = '';
+        
+        if(!data.sessions || data.sessions.length === 0) {
+            list.innerHTML = '<div style="color:var(--text-muted); text-align:center; padding: 20px;">Noch kein Verlauf vorhanden</div>';
+            return;
+        }
+
+        data.sessions.forEach(session => {
+            const card = document.createElement('div');
+            card.className = 'user-card';
+            card.innerHTML = `
+                <div>
+                    <h4 style="margin-bottom: 5px;">Problem: ${session.problem_input_short.substring(0, 50)}...</h4>
+                    <span style="font-size:0.8rem; color:var(--text-muted); margin-right: 15px;">📅 ${session.created_at.substring(0, 10)}</span>
+                    <span style="font-size:0.8rem; color:var(--text-muted)">🔄 ${session.phases_count} Schritte</span>
+                </div>
+                <div class="user-card-actions">
+                    <button class="btn-reject" onclick="deleteHistory('${session.id}')">🗑️</button>
+                </div>
+            `;
+            list.appendChild(card);
+        });
+    } catch(e) {
+        console.error("Load History Error:", e);
+    }
+}
+
+async function deleteHistory(sessionId) {
+    await fetch(`${API_URL}/history/${sessionId}?user_id=${currentUser.user_id}`, { method: 'DELETE' });
+    loadHistory();
 }
 
 // Admin Logic
@@ -146,6 +189,28 @@ async function approveUser(uuid) {
 }
 
 // Agent WebSocket Logic
+let currentLoader = null;
+
+function removeLoader() {
+    if(currentLoader && currentLoader.parentNode) {
+        currentLoader.parentNode.removeChild(currentLoader);
+    }
+    currentLoader = null;
+}
+
+function showLoader(stream) {
+    removeLoader();
+    currentLoader = document.createElement('div');
+    currentLoader.className = 'msg-row msg-agent';
+    currentLoader.innerHTML = `
+        <div class="agent-message">
+            <div class="loader-dots"><div></div><div></div><div></div></div>
+        </div>
+    `;
+    stream.appendChild(currentLoader);
+    stream.scrollTop = stream.scrollHeight;
+}
+
 function startAgent() {
     const input = document.getElementById('problem-input').value;
     if (!input) return;
@@ -154,8 +219,8 @@ function startAgent() {
 
     const stream = document.getElementById('chat-stream');
     stream.innerHTML = `
-        <div class="agent-message user-msg">
-            <p><strong>Du:</strong> ${input}</p>
+        <div class="msg-row msg-user">
+            <div class="user-msg">${input}</div>
         </div>
     `;
 
@@ -169,12 +234,23 @@ function startAgent() {
             problem_input: input,
             settings: {}
         }));
+        showLoader(stream);
     };
 
     currentSocket.onmessage = (event) => {
         const data = JSON.parse(event.data);
         console.log(data);
+        
+        if(data.type === 'status') {
+            showLoader(stream);
+            return;
+        }
 
+        removeLoader();
+
+        const row = document.createElement('div');
+        row.className = 'msg-row msg-agent';
+        
         const msgDiv = document.createElement('div');
         msgDiv.className = 'agent-message';
 
@@ -183,24 +259,29 @@ function startAgent() {
                 <div class="agent-action">⚙️ ${data.action}</div>
                 <div class="agent-thought">🧠 ${data.thought}</div>
             `;
-            stream.appendChild(msgDiv);
+            row.appendChild(msgDiv);
+            stream.appendChild(row);
         } else if (data.type === 'phase_completed') {
             msgDiv.innerHTML = `<p>${data.result.replace(/\\n/g, '<br>')}</p>`;
-            stream.appendChild(msgDiv);
+            row.appendChild(msgDiv);
+            stream.appendChild(row);
         } else if (data.type === 'done') {
-            const finalDiv = document.createElement('div');
-            finalDiv.className = 'agent-message final-msg';
-            finalDiv.style.borderLeft = '4px solid #4ade80';
-            finalDiv.innerHTML = `<h3>✅ Finale Lösung:</h3><p>${data.final_solution.replace(/\\n/g, '<br>')}</p>`;
-            stream.appendChild(finalDiv);
+            msgDiv.className = 'agent-message final-msg';
+            msgDiv.style.borderLeft = '4px solid #4ade80';
+            msgDiv.innerHTML = `<h3>✅ Finale Lösung:</h3><p>${data.final_solution.replace(/\\n/g, '<br>')}</p>`;
+            row.appendChild(msgDiv);
+            stream.appendChild(row);
         } else if (data.type === 'error') {
-            const errDiv = document.createElement('div');
-            errDiv.className = 'agent-message error-msg';
-            errDiv.style.borderLeft = '4px solid #ef4444';
-            errDiv.innerHTML = `<h3>❌ Fehler:</h3><p>${data.message}</p>`;
-            stream.appendChild(errDiv);
+            msgDiv.className = 'agent-message error-msg';
+            msgDiv.style.borderLeft = '4px solid #ef4444';
+            msgDiv.innerHTML = `<h3>❌ Fehler:</h3><p>${data.message}</p>`;
+            row.appendChild(msgDiv);
+            stream.appendChild(row);
         }
 
         stream.scrollTop = stream.scrollHeight;
+        if(data.type !== 'done' && data.type !== 'error') {
+            showLoader(stream); // Put loader back until done
+        }
     };
 }
