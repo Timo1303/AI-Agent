@@ -1,5 +1,12 @@
-const API_URL = 'http://127.0.0.1:8000/api';
-const WS_URL = 'ws://127.0.0.1:8000/api/ws/chat';
+// ==========================================
+// EINSTELLUNGEN:
+// Wenn du die App auf Render hochlädst, trage hier die URL ein:
+const RENDER_DOMAIN = 'dein-app-name.onrender.com';
+// ==========================================
+
+const isProd = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
+const API_URL = isProd ? `https://${RENDER_DOMAIN}/api` : 'http://127.0.0.1:8000/api';
+const WS_URL = isProd ? `wss://${RENDER_DOMAIN}/api/ws/chat` : 'ws://127.0.0.1:8000/api/ws/chat';
 
 let currentUser = null;
 let currentSocket = null;
