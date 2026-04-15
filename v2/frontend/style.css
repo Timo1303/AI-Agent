@@ -210,7 +210,8 @@ input:focus {
 
 .sidebar.collapsed .nav-text, 
 .sidebar.collapsed .user-info,
-.sidebar.collapsed .user-profile {
+.sidebar.collapsed .user-profile,
+.sidebar.collapsed .sidebar-history-section {
     display: none;
 }
 
@@ -291,6 +292,17 @@ input:focus {
     background: rgba(139, 92, 246, 0.15); 
     color: var(--accent);
 }
+
+.nav-btn i, .logout-btn i {
+    flex-shrink: 0;
+}
+
+.sidebar.collapsed .nav-btn,
+.sidebar.collapsed .logout-btn {
+    justify-content: center;
+    padding: 12px 0;
+}
+
 .logout-btn { margin-top: auto; color: #ef4444; }
 .logout-btn:hover { background: rgba(239, 68, 68, 0.1); }
 
