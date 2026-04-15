@@ -15,7 +15,7 @@ let GLOBAL_SESSION_ID = null; // Trackt den aktuell offenen Chat
 // Auth UI Logic
 function switchAuthTab(tab) {
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-    event.target.classList.add('active');
+    if (window.event && window.event.target) window.event.target.classList.add('active');
 
     document.getElementById('login-form').style.display = tab === 'login' ? 'block' : 'none';
     document.getElementById('register-form').style.display = tab === 'register' ? 'block' : 'none';
@@ -107,7 +107,7 @@ function showView(viewId) {
     document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
     
     document.getElementById(`view-${viewId}`).classList.add('active');
-    if (event && event.currentTarget) {
+    if (typeof event !== 'undefined' && event && event.currentTarget) {
         event.currentTarget.classList.add('active');
     }
 
