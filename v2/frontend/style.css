@@ -209,7 +209,8 @@ input:focus {
 }
 
 .sidebar.collapsed .nav-text, 
-.sidebar.collapsed .user-info {
+.sidebar.collapsed .user-info,
+.sidebar.collapsed .user-profile {
     display: none;
 }
 
@@ -220,6 +221,10 @@ input:focus {
     padding-bottom: 24px;
     border-bottom: 1px solid var(--panel-border);
     margin-bottom: 24px;
+}
+
+.sidebar.collapsed .sidebar-header {
+    justify-content: center;
 }
 
 .toggle-sidebar {
@@ -331,10 +336,10 @@ input:focus {
     background: rgba(255,255,255,0.05);
     color: var(--text-main);
 }
-.sidebar-history-item span.icon { display: none; }
+.sidebar-history-item .icon { display: none; width: 20px; height: 20px; }
 .sidebar.collapsed .sidebar-history-item { padding: 10px; text-align: center; }
 .sidebar.collapsed .sidebar-history-item span.text { display: none; }
-.sidebar.collapsed .sidebar-history-item span.icon { display: inline; }
+.sidebar.collapsed .sidebar-history-item .icon { display: inline-block; }
 .sidebar.collapsed .history-title { padding: 12px 0; justify-content: center; }
 
 /* Main Content Area */

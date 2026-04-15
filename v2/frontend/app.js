@@ -157,13 +157,17 @@ async function loadHistory() {
             card.title = session.problem_input_short;
             
             card.innerHTML = `
-                <span class="icon">📝</span>
+                <i data-lucide="message-square" class="icon"></i>
                 <span class="text">${session.problem_input_short.substring(0, 20)}...</span>
             `;
             // Optionale Aktion beim Klick: Chat laden
             card.onclick = () => loadChatSession(session.id);
             list.appendChild(card);
         });
+        
+        // Neu gezeichnete Icons aktivieren
+        if (window.lucide) window.lucide.createIcons();
+        
     } catch(e) {
         console.error("Load History Error:", e);
     }
