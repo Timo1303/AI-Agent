@@ -312,50 +312,55 @@ with st.sidebar:
     st.divider()
 
     # Admin-Bereich
-    if auth_manager.is_admin(st.session_state[SESSION_KEY_USER_ID]):
-        with st.expander("🛠️ Admin-Panel", expanded=False):
-            st.subheader("Ausstehende Genehmigungen")
-            pending_users = auth_manager.get_pending_users()
+    @st.fragment(run_every=10)
+    def render_admin_panel():
+        if auth_manager.is_admin(st.session_state[SESSION_KEY_USER_ID]):
+            with st.expander("🛠️ Admin-Panel", expanded=False):
+                st.subheader("Ausstehende Genehmigungen")
+                pending_users = auth_manager.get_pending_users()
 
-            if not pending_users:
-                st.info("✅ Keine ausstehenden Genehmigungen")
-            else:
-                st.warning(f"{len(pending_users)} Benutzer warten")
-                for user_uuid, user_data in pending_users.items():
+                if not pending_users:
+                    st.info("✅ Keine ausstehenden Genehmigungen")
+                else:
+                    st.warning(f"{len(pending_users)} Benutzer warten")
+                    for user_uuid, user_data in pending_users.items():
+                        col1, col2 = st.columns([2, 1])
+                        with col1:
+                            st.write(f"**{user_data.get('username')}**")
+                            st.caption(f"Seit: {user_data.get('created_at', '')[:10]}")
+                        with col2:
+                            col_app, col_rej = st.columns(2)
+                            with col_app:
+                                if st.button("✔", help="Genehmigen", key=f"app_{user_uuid}", use_container_width=True):
+                                    auth_manager.approve_user(user_uuid)
+                                    st.success("Genehmigt!")
+                                    st.rerun()
+                            with col_rej:
+                                if st.button("✖", help="Ablehnen", key=f"rej_{user_uuid}", use_container_width=True):
+                                    auth_manager.reject_user(user_uuid)
+                                    st.success("Abgelehnt!")
+                                    st.rerun()
+
+                st.divider()
+                st.subheader("Alle Benutzer")
+                all_users = auth_manager.get_all_users()
+                st.write(f"**{len(all_users)} Benutzer insgesamt**")
+
+                for user_uuid, user_data in sorted(all_users.items(), key=lambda x: x[1].get('created_at', ''), reverse=True)[:10]:
                     col1, col2 = st.columns([2, 1])
                     with col1:
-                        st.write(f"**{user_data.get('username')}**")
+                        status_badge = "🔐 Admin" if user_data.get('status') == 'admin' else "👤 User"
+                        st.write(f"{status_badge} **{user_data.get('username')}**")
                         st.caption(f"Seit: {user_data.get('created_at', '')[:10]}")
                     with col2:
-                        col_app, col_rej = st.columns(2)
-                        with col_app:
-                            if st.button("✔", help="Genehmigen", key=f"app_{user_uuid}", use_container_width=True):
-                                auth_manager.approve_user(user_uuid)
-                                st.success("Genehmigt!")
-                                st.rerun()
-                        with col_rej:
-                            if st.button("✖", help="Ablehnen", key=f"rej_{user_uuid}", use_container_width=True):
-                                auth_manager.reject_user(user_uuid)
-                                st.success("Abgelehnt!")
+                        if user_data.get('status') != 'admin':
+                            if st.button("🗑", key=f"del_{user_uuid}", use_container_width=True):
+                                auth_manager.delete_user(user_uuid)
+                                st.success("Gelöscht!")
                                 st.rerun()
 
-            st.divider()
-            st.subheader("Alle Benutzer")
-            all_users = auth_manager.get_all_users()
-            st.write(f"**{len(all_users)} Benutzer insgesamt**")
-
-            for user_uuid, user_data in sorted(all_users.items(), key=lambda x: x[1].get('created_at', ''), reverse=True)[:10]:
-                col1, col2 = st.columns([2, 1])
-                with col1:
-                    status_badge = "🔐 Admin" if user_data.get('status') == 'admin' else "👤 User"
-                    st.write(f"{status_badge} **{user_data.get('username')}**")
-                    st.caption(f"Seit: {user_data.get('created_at', '')[:10]}")
-                with col2:
-                    if user_data.get('status') != 'admin':
-                        if st.button("🗑", key=f"del_{user_uuid}", use_container_width=True):
-                            auth_manager.delete_user(user_uuid)
-                            st.success("Gelöscht!")
-                            st.rerun()
+    # Führe das Admin-Panel aus (lädt sich automatisch alle 10 Sekunden neu)
+    render_admin_panel()
 
     st.divider()
 
