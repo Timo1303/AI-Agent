@@ -110,21 +110,25 @@ function showView(viewId) {
     if (typeof event !== 'undefined' && event && event.currentTarget) {
         event.currentTarget.classList.add('active');
     }
+}
 
-    if(viewId === 'chat') {
-        // Neuen Chat starten -> Session ID nullen & Stream leeren
-        GLOBAL_SESSION_ID = null;
-        const stream = document.getElementById('chat-stream');
-        if(stream) {
-            stream.innerHTML = `
-                <div class="welcome-message">
-                    <i data-lucide="sparkles" class="magic-icon"></i>
-                    <h3>Neuer Chat gestartet!</h3>
-                    <p>Beschreibe dein nächstes Problem.</p>
-                </div>
-            `;
-            if (window.lucide) window.lucide.createIcons();
-        }
+function startNewChat() {
+    showView('chat');
+    // Ensure chat nav button is visibly active
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+    document.querySelector('.nav-btn[onclick="startNewChat()"]').classList.add('active');
+    
+    GLOBAL_SESSION_ID = null;
+    const stream = document.getElementById('chat-stream');
+    if(stream) {
+        stream.innerHTML = `
+            <div class="welcome-message">
+                <i data-lucide="sparkles" class="magic-icon"></i>
+                <h3>Neuer Chat gestartet!</h3>
+                <p>Beschreibe dein nächstes Problem.</p>
+            </div>
+        `;
+        if (window.lucide) window.lucide.createIcons();
     }
 }
 
@@ -175,17 +179,15 @@ async function loadChatSession(sessionId) {
         
         // Active Klasse für Chat-Button setzen
         document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-        document.querySelector('.nav-btn[onclick="showView(\'chat\')"]').classList.add('active');
         
         const stream = document.getElementById('chat-stream');
         stream.innerHTML = ''; // Leeren
 
         // 1. Initiales Problem
-        stream.innerHTML += `
-            <div class="msg-row msg-user">
-                <div class="user-msg">${sessionData.problem_input}</div>
-            </div>
-        `;
+        const problemRow = document.createElement('div');
+        problemRow.className = 'msg-row msg-user';
+        problemRow.innerHTML = `<div class="user-msg">${sessionData.problem_input}</div>`;
+        stream.appendChild(problemRow);
 
         // 2. Alle Phasen laden
         if (sessionData.phases) {

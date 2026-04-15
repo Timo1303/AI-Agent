@@ -264,7 +264,7 @@ input:focus {
     display: flex;
     flex-direction: column;
     gap: 8px;
-    flex: 1;
+    /* flex: 1 removed to remove gap */
 }
 .nav-btn, .logout-btn {
     display: flex;
