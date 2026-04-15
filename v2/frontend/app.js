@@ -10,6 +10,7 @@ const WS_URL = isProd ? `wss://${RENDER_DOMAIN}/api/ws/chat` : 'ws://127.0.0.1:8
 
 let currentUser = null;
 let currentSocket = null;
+let GLOBAL_SESSION_ID = null; // Trackt den aktuell offenen Chat
 
 // Auth UI Logic
 function switchAuthTab(tab) {
@@ -109,6 +110,22 @@ function showView(viewId) {
     if (event && event.currentTarget) {
         event.currentTarget.classList.add('active');
     }
+
+    if(viewId === 'chat') {
+        // Neuen Chat starten -> Session ID nullen & Stream leeren
+        GLOBAL_SESSION_ID = null;
+        const stream = document.getElementById('chat-stream');
+        if(stream) {
+            stream.innerHTML = `
+                <div class="welcome-message">
+                    <i data-lucide="sparkles" class="magic-icon"></i>
+                    <h3>Neuer Chat gestartet!</h3>
+                    <p>Beschreibe dein nächstes Problem.</p>
+                </div>
+            `;
+            if (window.lucide) window.lucide.createIcons();
+        }
+    }
 }
 
 // Sidebar Toggle
@@ -139,12 +156,58 @@ async function loadHistory() {
                 <span class="icon">📝</span>
                 <span class="text">${session.problem_input_short.substring(0, 20)}...</span>
             `;
-            // Optionale Aktion beim Klick: Chat laden (Backend endpoint fehlt dafür in V2 aktuell)
-            // card.onclick = () => loadChatSession(session.id);
+            // Optionale Aktion beim Klick: Chat laden
+            card.onclick = () => loadChatSession(session.id);
             list.appendChild(card);
         });
     } catch(e) {
         console.error("Load History Error:", e);
+    }
+}
+
+async function loadChatSession(sessionId) {
+    try {
+        const res = await fetch(`${API_URL}/history/${sessionId}?user_id=${currentUser.user_id}`);
+        const sessionData = await res.json();
+        
+        GLOBAL_SESSION_ID = sessionId;
+        showView('chat'); // Zum Chat-Fenster hüpfen (mit manueller DOM-Manipulation statt Button ClickEvent wegen event context)
+        
+        // Active Klasse für Chat-Button setzen
+        document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+        document.querySelector('.nav-btn[onclick="showView(\'chat\')"]').classList.add('active');
+        
+        const stream = document.getElementById('chat-stream');
+        stream.innerHTML = ''; // Leeren
+
+        // 1. Initiales Problem
+        stream.innerHTML += `
+            <div class="msg-row msg-user">
+                <div class="user-msg">${sessionData.problem_input}</div>
+            </div>
+        `;
+
+        // 2. Alle Phasen laden
+        if (sessionData.phases) {
+            sessionData.phases.forEach(phase => {
+                const row = document.createElement('div');
+                
+                if (phase.phase === 'user_followup') {
+                    row.className = 'msg-row msg-user';
+                    row.innerHTML = `<div class="user-msg">${phase.output}</div>`;
+                } else if (phase.phase === 'final_output') {
+                    row.className = 'msg-row msg-agent';
+                    row.innerHTML = `<div class="agent-message final-msg" style="border-left: 4px solid #4ade80;"><h3>✅ Finale Lösung:</h3><p>${phase.output.replace(/\\n/g, '<br>')}</p></div>`;
+                } else {
+                    row.className = 'msg-row msg-agent';
+                    row.innerHTML = `<div class="agent-message"><div class="agent-action">⚙️ ${phase.phase}</div><p>${phase.output.replace(/\\n/g, '<br>')}</p></div>`;
+                }
+                stream.appendChild(row);
+            });
+        }
+        stream.scrollTop = stream.scrollHeight;
+    } catch(e) {
+        console.error("Session load error:", e);
     }
 }
 
@@ -237,6 +300,7 @@ function startAgent() {
         currentSocket.send(JSON.stringify({
             user_id: currentUser.user_id,
             problem_input: input,
+            session_id: GLOBAL_SESSION_ID,
             settings: {}
         }));
         showLoader(stream);

@@ -86,6 +86,15 @@ async def get_history(user_id: str):
     history = storage_manager.get_chat_sessions_summary(user_id)
     return {"sessions": history}
 
+@app.get("/api/history/{session_id}")
+async def get_history_detail(session_id: str, user_id: str):
+    if not auth_manager.get_user_info(user_id):
+        raise HTTPException(status_code=401, detail="User not found")
+    session = storage_manager.get_chat_session(user_id, session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    return session
+
 @app.delete("/api/history/{session_id}")
 async def delete_history(session_id: str, user_id: str):
     if not auth_manager.get_user_info(user_id):
@@ -104,18 +113,44 @@ async def websocket_chat(websocket: WebSocket):
     user_id = init_data.get("user_id")
     problem_input = init_data.get("problem_input")
     settings = init_data.get("settings", {"temperature": 0.7, "max_refinements": 5})
+    existing_session_id = init_data.get("session_id")
     
     if not user_id or not problem_input:
         await websocket.send_text(json.dumps({"type": "error", "message": "Missing arguments"}))
         await websocket.close()
         return
 
-    # Session in DB ablegen
-    session_id = storage_manager.create_chat_session(user_id, problem_input, settings)
-    
-    await websocket.send_text(json.dumps({"type": "session_created", "session_id": session_id}))
+    history = ""
+    session_id = ""
 
-    history = f"NUTZER PROBLEM:\n{problem_input}\n"
+    if existing_session_id:
+        # Continuing an existing session
+        session_id = existing_session_id
+        session_data = storage_manager.get_chat_session(user_id, session_id)
+        if session_data:
+            history += f"URSPRÜNGLICHES NUTZER PROBLEM:\n{session_data.get('problem_input', '')}\n"
+            for phase in session_data.get('phases', []):
+                p_name = phase.get('phase', '')
+                p_out = phase.get('output', '')
+                if p_name == 'user_followup':
+                    history += f"\nNUTZER GIBT NEUE ANWEISUNG:\n{p_out}\n"
+                else:
+                    history += f"\n[Action: {p_name}] -> Result: {p_out[:200]}...\n"
+                    
+            history += f"\nNUTZER GIBT NEUE ANWEISUNG:\n{problem_input}\n"
+            # Speichere die Nachfrage als Phase ab
+            storage_manager.add_phase_to_session(user_id, session_id, "user_followup", problem_input)
+            await websocket.send_text(json.dumps({"type": "session_created", "session_id": session_id}))
+        else:
+            await websocket.send_text(json.dumps({"type": "error", "message": "Session not found"}))
+            await websocket.close()
+            return
+    else:
+        # Session in DB ablegen
+        session_id = storage_manager.create_chat_session(user_id, problem_input, settings)
+        await websocket.send_text(json.dumps({"type": "session_created", "session_id": session_id}))
+        history = f"NUTZER PROBLEM:\n{problem_input}\n"
+
     refinement_count = 0
     max_refinements = settings.get("max_refinements", 5)
     temperature = settings.get("temperature", 0.7)
