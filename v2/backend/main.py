@@ -162,11 +162,12 @@ async def websocket_chat(websocket: WebSocket):
         system_prompt = f"""Du bist ein autonomes KI-Gehirn (Master-Orchestrator). Löse das Problem des Nutzers.
 Entscheide den NÄCHSTEN logischen Schritt basierend auf dem Problem und Verlauf.
 Du hast exakt folgende Werkzeuge (Actions):
-1. "DIRECT_ANSWER": Gib sofort eine finale Antwort (für einfache Fragen). action_input MUSS die Antwort sein.
-2. "SEARCH_WEB": Suche im Internet. action_input = ["begriff1", "begriff2"].
-3. "PLAN_EXECUTION": Wenn programmiert wird. action_input = [{{"task": "..."}}].
-4. "VERIFY": Prüfe den Code/die Lösung auf Fehler. action_input = "Was zu prüfen ist".
-5. "FINISH": Lösung ist 100% fertig. action_input = "Die finale Lösung".
+1. "DIRECT_ANSWER": Gib sofort eine finale Antwort (Lösung). Verwende dies NICHT für Rückfragen! action_input MUSS die Antwort sein.
+2. "ASK_USER": Du brauchst eine Rückmeldung oder hast eine Rückfrage an den Nutzer. action_input MUSS die Frage sein.
+3. "SEARCH_WEB": Suche im Internet. action_input = ["begriff1", "begriff2"].
+4. "PLAN_EXECUTION": Wenn programmiert oder geplant wird. action_input = [{{"task": "..."}}].
+5. "VERIFY": Prüfe den Code/die Lösung auf Fehler. action_input = "Was zu prüfen ist".
+6. "FINISH": Lösung ist 100% fertig. action_input = "Die finale Lösung".
 
 Antworte IMMER im JSON-Format wie folgt:
 {{
@@ -228,6 +229,10 @@ Antworte IMMER im JSON-Format wie folgt:
                 phase_name = "final_output"
                 action_result = str(action_input)
                 
+            elif action == "ASK_USER":
+                phase_name = "ask_user"
+                action_result = str(action_input)
+                
             elif action == "SEARCH_WEB":
                 phase_name = "search"
                 from duckduckgo_search import DDGS
@@ -268,6 +273,9 @@ Antworte IMMER im JSON-Format wie folgt:
             if action == "DIRECT_ANSWER" or action == "FINISH":
                 storage_manager.complete_chat_session(user_id, session_id, action_result)
                 await websocket.send_text(json.dumps({"type": "done", "final_solution": action_result}))
+                break
+            elif action == "ASK_USER":
+                await websocket.send_text(json.dumps({"type": "ask_user", "question": action_result}))
                 break
 
         except Exception as e:

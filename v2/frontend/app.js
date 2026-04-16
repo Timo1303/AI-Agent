@@ -201,6 +201,9 @@ async function loadChatSession(sessionId) {
                 if (phase.phase === 'user_followup') {
                     row.className = 'msg-row msg-user';
                     row.innerHTML = `<div class="user-msg">${phase.output}</div>`;
+                } else if (phase.phase === 'ask_user') {
+                    row.className = 'msg-row msg-agent';
+                    row.innerHTML = `<div class="agent-message ask-user-msg" style="border-left: 4px solid #f59e0b;"><h3>❓ Rückfrage:</h3><p>${phase.output.replace(/\\n/g, '<br>')}</p></div>`;
                 } else if (phase.phase === 'final_output') {
                     row.className = 'msg-row msg-agent';
                     row.innerHTML = `<div class="agent-message final-msg" style="border-left: 4px solid #4ade80;"><h3>✅ Finale Lösung:</h3><p>${phase.output.replace(/\\n/g, '<br>')}</p></div>`;
@@ -340,6 +343,29 @@ function startAgent() {
             msgDiv.innerHTML = `<p>${data.result.replace(/\\n/g, '<br>')}</p>`;
             row.appendChild(msgDiv);
             stream.appendChild(row);
+        } else if (data.type === 'ask_user') {
+            msgDiv.className = 'agent-message ask-user-msg';
+            msgDiv.style.borderLeft = '4px solid #f59e0b';
+            msgDiv.innerHTML = `
+                <h3>❓ Rückfrage des Agents:</h3>
+                <p>${data.question.replace(/\\n/g, '<br>')}</p>
+                <div class="inline-reply-box" style="margin-top: 15px; display: flex; gap: 10px;">
+                    <input type="text" id="inline-reply-input-${GLOBAL_SESSION_ID}" class="inline-reply-input" placeholder="Deine Antwort..." style="flex: 1; padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.2); color: white;">
+                    <button onclick="submitInlineReply('${GLOBAL_SESSION_ID}')" class="primary-btn" style="padding: 10px 15px; background: #f59e0b; color: #fff;">Antworten</button>
+                </div>
+            `;
+            row.appendChild(msgDiv);
+            stream.appendChild(row);
+            
+            setTimeout(() => {
+                const replyInput = document.getElementById(`inline-reply-input-${GLOBAL_SESSION_ID}`);
+                if (replyInput) {
+                    replyInput.focus();
+                    replyInput.addEventListener('keydown', (e) => {
+                        if (e.key === 'Enter') submitInlineReply(GLOBAL_SESSION_ID);
+                    });
+                }
+            }, 100);
         } else if (data.type === 'done') {
             msgDiv.className = 'agent-message final-msg';
             msgDiv.style.borderLeft = '4px solid #4ade80';
@@ -359,6 +385,21 @@ function startAgent() {
         }
     };
 }
+
+window.submitInlineReply = (sessionId) => {
+    const inlineInput = document.getElementById(`inline-reply-input-${sessionId}`);
+    if (!inlineInput || !inlineInput.value.trim()) return;
+    
+    const val = inlineInput.value.trim();
+    
+    inlineInput.disabled = true;
+    inlineInput.nextElementSibling.disabled = true;
+    inlineInput.nextElementSibling.innerText = "Gesendet";
+    inlineInput.nextElementSibling.style.opacity = "0.5";
+    
+    document.getElementById('problem-input').value = val;
+    startAgent();
+};
 
 // Keyboard Events
 document.addEventListener('DOMContentLoaded', () => {
